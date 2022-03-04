@@ -23,6 +23,8 @@ public class Xiaoxiaole : MonoBehaviour
     private List<ItemProperty> m_ItemTypes;
     private bool isStartRecord;
     private Dictionary<int,int> m_animationRecord;
+    private Stack<GameObject> m_itemCache;
+    private int itemsCounts;
 
     private class ItemProperty
     {
@@ -41,12 +43,13 @@ public class Xiaoxiaole : MonoBehaviour
         m_ItemTypes = new List<ItemProperty>();
         m_animationRecord = new Dictionary<int, int>();
         m_allItems = new List<ItemProperty>();
+        m_itemCache = new Stack<GameObject>();
         InitItems();
     }
 
     private void InitItems()//初始化子项
     {
-        var itemsCounts = 0;
+        itemsCounts = 0;
         for (int rowCount = 0; rowCount < rowCounts; rowCount++)
         {
             for (int columnCount = 0; columnCount < columnCounts; columnCount++)
@@ -133,6 +136,12 @@ public class Xiaoxiaole : MonoBehaviour
         {
             RemoveItems(item);
         }
+
+        foreach (var item in m_animationRecord)
+        {
+            GenerateNewItems(item.Key, item.Value);
+        }
+        
         isStartRecord = false;
         m_ItemTypes.Clear();
     }
@@ -158,9 +167,27 @@ public class Xiaoxiaole : MonoBehaviour
         }
     }
 
-    private void GenerateNewItems()
+    private void GenerateNewItems(int column,int counts)
     {
-        
+        for (int i = 0; i < counts; i++)
+        {  
+            if (m_itemCache.Count > 0)
+            {
+                var go = m_itemCache.Pop();
+                go.SetActive(true);
+                go.GetComponent<RectTransform>().anchoredPosition = new Vector2(70 + 120 * column ,-70 - 120 * i);
+                go.GetComponent<Image>().color = Color.blue;
+                var itemPro = new ItemProperty()
+                {
+                    idx = itemsCounts,
+                    itemObj = go,
+                    ItemType = Random.Range(1,4),
+                    axisRecord = new List<(int, int)>(){(column,i)}
+                };
+                itemsCounts++;
+                m_allItems.Add(itemPro);
+            }
+        }
     }
 
     private List<ItemProperty> GainItems(int column,int row)//挑选删除项上面的items
@@ -172,9 +199,9 @@ public class Xiaoxiaole : MonoBehaviour
     private void RemoveItems(ItemProperty item) //移除的物体下落
     {
         item.itemObj.SetActive(false);
+        m_itemCache.Push(item.itemObj);
         m_allItems.RemoveAll(which => which.idx == item.idx);
         var items = GainItems(item.axisRecord[0].Item1, item.axisRecord[0].Item2);
-   
         foreach (var o in items)
         {
             // o.itemObj.GetComponent<RectTransform>().anchoredPosition =  new Vector2(
@@ -188,6 +215,7 @@ public class Xiaoxiaole : MonoBehaviour
                         new Vector2(
                             o.itemObj.GetComponent<RectTransform>().anchoredPosition.x,
                             o.itemObj.GetComponent<RectTransform>().anchoredPosition.y - 120*b.Value),o.itemObj));
+                    o.axisRecord = new List<(int, int)>() {(o.axisRecord[0].Item1,o.axisRecord[0].Item2 + b.Value)};
                 }
             }
         }
